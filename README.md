@@ -8,6 +8,10 @@ Full-stack web app where an **Admin** creates and assigns tasks, **Employees** w
 - **Auth:** JWT (bearer token), passwords hashed with bcrypt
 - **Tests:** Jest + Supertest
 
+## Live app
+
+**URL:** https://humble-possibility-production-69ce.up.railway.app
+
 ## Demo accounts (seeded, demo data only)
 
 | Role | Email | Password |
@@ -16,7 +20,7 @@ Full-stack web app where an **Admin** creates and assigns tasks, **Employees** w
 | Employee 1 | `employee1@demo.com` | `Employee@12345` |
 | Employee 2 | `employee2@demo.com` | `Employee@12345` |
 
-Login page: `<LIVE_URL>/` (the login screen has one-click buttons that fill these demo credentials).
+The login screen has one-click buttons that fill these demo credentials.
 
 ## Workflow rules
 
@@ -67,7 +71,9 @@ Production-style single-process run (Express serves the built React app):
 npm run build && npm start      # http://localhost:4000
 ```
 
-Migrations are plain SQL files in `backend/migrations/`, applied in order and tracked in a `schema_migrations` table (safe to re-run). The seed is idempotent: it never overwrites existing users.
+Note: `npm start` first runs the migrations and the seed, then starts the server. Both are safe to re-run.
+
+Migrations are plain SQL files in `backend/migrations/`, applied in order and tracked in a `schema_migrations` table. The seed is idempotent: it never overwrites existing users.
 
 ## Environment variables (names only)
 
@@ -90,10 +96,12 @@ npm run migrate && npm run seed     # integration tests use the seeded demo user
 npm test
 ```
 
-- `tests/workflow.test.js` – pure unit tests of the transition/permission rules (no DB needed).
-- `tests/api.test.js` – integration tests against MySQL: login failure & 401s, role restrictions (employee cannot create/edit/delete/approve), employee data isolation, full workflow with persistence + history, rejection path, invalid transitions (409), dashboard scoping, filters, input validation.
+- `backend/tests/workflow.test.js` – unit tests of the transition/permission rules (no DB needed).
+- `backend/tests/api.test.js` – integration tests against MySQL: login failure & 401s, role restrictions (employee cannot create/edit/delete/approve), employee data isolation, full workflow with persistence + history, rejection path, invalid transitions (409), dashboard scoping, filters, input validation.
 
 Point the tests at a throwaway database (`DB_NAME=taskapp_test`) if you do not want to touch real data; tasks created by the tests are deleted afterwards.
+
+> Note: the test suite is included but has not been run against a database yet. The main flows were checked manually on the live app.
 
 ## Architecture
 
@@ -132,17 +140,17 @@ frontend/src/                 App.jsx (Login, Dashboard, Tasks, TaskDetail, Task
 - Status updates use compare-and-set (`WHERE status = <old>`) inside a transaction so concurrent changes cannot corrupt history.
 - Secrets only come from environment variables; `helmet` sets security headers.
 
-## Deployment (HTTPS public URL)
+## Deployment (Railway)
 
-Recommended: **Railway** (app + MySQL in one project).
+The live app runs on **Railway** (app + MySQL in one project).
 
 1. Push this repo to GitHub.
-2. Railway → New Project → *Deploy from GitHub repo*; then *+ New → Database → MySQL*.
-3. In the app service → Variables: `JWT_SECRET` (long random), `DATABASE_URL` = reference to the MySQL service's `MYSQL_URL`, `NODE_ENV=production`.
-4. Settings: Build command `npm run build`, Start command `npm run start:prod` (runs migrations + seed, then the server). Generate a public domain (HTTPS is automatic).
-5. Open the URL and sign in with the demo admin; confirm everything works, then keep the project online for 14+ days (check plan/credit limits).
+2. Railway → New Project → *Deploy from GitHub repo*; then add a **MySQL** database to the same project.
+3. In the app service → Variables: `JWT_SECRET` (long random string) and `DATABASE_URL` = `${{MySQL.MYSQL_URL}}`.
+4. Railway builds with `npm run build` and starts with `npm start`, which runs the migrations and seed and then starts the server.
+5. Settings → Networking → *Generate Domain* gives the public HTTPS URL.
 
-Alternative: Render (web service, same commands) + any managed MySQL (e.g. Aiven free tier) using the `DB_*` variables and `DB_SSL=true`.
+Alternative: Render (web service, same commands) + any managed MySQL using the `DB_*` variables and `DB_SSL=true`.
 
 ## Known limitations
 
@@ -150,4 +158,4 @@ Alternative: Render (web service, same commands) + any managed MySQL (e.g. Aiven
 - No refresh tokens, password reset, email notifications or user edit/delete screens.
 - Task list is not paginated (fine for demo-size data).
 - Free hosting tiers may sleep when idle, so the first request can be slow.
-- Integration tests need a running MySQL with migrations and seed applied.
+- Integration tests need a running MySQL with migrations and seed applied, and have not been run yet.
